@@ -1,0 +1,4 @@
+servervault/
+database/
+logs/
+ops/.env
