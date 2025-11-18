@@ -2,3 +2,4 @@ servervault/
 database/
 logs/
 ops/.env
+.DS_Store
