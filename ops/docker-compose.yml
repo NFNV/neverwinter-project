@@ -1,7 +1,7 @@
 services:
   nwn:
     platform: linux/amd64
-    image: nwnxee/unified:latest
+    image: nwn-ee-pw:local
     container_name: nwn-ee-pw
     environment:
       - NWN_MODULE=NV_PW_Seed
@@ -14,7 +14,6 @@ services:
       - "5121:5121/udp"
       - "5121:5121/tcp"
     volumes:
-      - ../module:/nwn/run/modules
       - ../servervault:/nwn/home/servervault
       - ../database:/nwn/home/database
       - ../logs:/nwn/run/logs
