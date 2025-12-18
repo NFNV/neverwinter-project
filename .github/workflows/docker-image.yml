@@ -2,9 +2,10 @@ name: Build and publish NWN PW image
 
 on:
   push:
-    branches: [ master ]
-  tags:
-    - "v*.*.*"
+    branches:
+      - master
+    tags:
+      - "v*.*.*"
 
 env:
   IMAGE_NAME: ghcr.io/NFNV/neverwinter-project
@@ -35,10 +36,8 @@ jobs:
       - name: Determine image tags
         id: vars
         run: |
-          # Default tag: staging-latest for master
           TAGS="${{ env.IMAGE_NAME }}:staging-latest"
 
-          # If this is a tag like v0.1.0, also tag it as that version and prod-latest
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
             TAGS="${{ env.IMAGE_NAME }}:${VERSION},${{ env.IMAGE_NAME }}:prod-latest"
