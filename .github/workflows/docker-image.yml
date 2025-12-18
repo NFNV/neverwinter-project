@@ -8,7 +8,7 @@ on:
       - "v*.*.*"
 
 env:
-  IMAGE_NAME: ghcr.io/NFNV/neverwinter-project
+  IMAGE_NAME: ghcr.io/nfnv/neverwinter-project
 
 jobs:
   build-and-push:
