@@ -69,8 +69,8 @@ resource "google_compute_instance" "nwn_pw_vm" {
 
     mkdir -p servervault database logs
 
-    docker compose -f ops/docker-compose.yml pull || true
-    docker compose -f ops/docker-compose.yml up -d
+    docker compose -f ops/docker-compose.prod.yml pull || true
+    docker compose -f ops/docker-compose.prod.yml up -d
   EOT
 
   labels = {
