@@ -1,28 +1,22 @@
-# Neverwinter Nights: EE Persistent World – Docker + GCP
+# Neverwinter Nights: EE Persistent World (Docker + GCP)
 
-This repository contains a small **Neverwinter Nights: Enhanced Edition (NWN:EE) persistent world** server.  
-The server is packaged as a Docker image (published to GHCR) and can run both locally and on a Google Cloud VM.
+A small Neverwinter Nights: Enhanced Edition persistent world server, packaged as a Docker image and deployed to Google Cloud. The goal is a compact but real-world infra project: custom NWN content, containerized server, CI to GHCR, and a VM running the image.
 
-The focus is on:
+## What this includes
 
-- Custom NWN:EE content (module, NPCs, persistence).
-- Containerized dedicated server.
-- Simple CI → image registry → VM deployment flow.
+- Custom module: `module/NV_PW_Seed.mod`
+  - Small outdoor camp starting area.
+  - Banker NPC with persistent gold storage.
+  - Vendor NPC with shop inventory.
+  - Persistent camp chest.
+  - Server vault enabled for character persistence.
+- Docker image built from `nwnxee/unified:latest`.
+- GitHub Actions workflow to build/push to GHCR.
+- Terraform to provision a GCE VM and firewall rules.
 
----
+## Repository layout
 
-## Overview
-
-**Components**
-
-- **Module**: `module/NV_PW_Seed.mod` – custom area, banker NPC, persistent chest, vendor, server vault enabled.
-- **Docker image**: built from `nwnxee/unified:latest` with the module baked into `/nwn/run/modules/`.
-- **Registry**: GitHub Container Registry (GHCR) – `ghcr.io/nfnv/neverwinter-project:<tag>`.
-- **Infra**: Terraform-managed GCE VM (Debian, `e2-small`) in `southamerica-east1-a`, with a startup script that runs the server via Docker Compose.
-
-**Repository layout**
-
-```text
+```
 module/                     # NWN:EE module (.mod)
 ops/
   Dockerfile                # Builds NWN server image from nwnxee/unified
@@ -32,7 +26,109 @@ terraform/
   main.tf                   # Firewall, VM, startup script
 .github/workflows/
   docker-image.yml          # GHCR build & push
+```
 
----
+## Requirements
 
-  # Running Locally (Docker)
+- Docker and Docker Compose (local)
+- NWN:EE client for testing
+- Terraform + GCP account (production)
+
+## Local development
+
+### 1) Build the local image
+
+```
+docker build -t nwn-ee-pw:local -f ops/Dockerfile .
+```
+
+### 2) Start the server
+
+```
+docker compose -f ops/docker-compose.yml up -d
+```
+
+### 3) Connect from your client
+
+- Direct Connect to `<your-mac-ip>:5121`
+- TCP and UDP 5121 are exposed for local testing.
+
+### 4) Logs
+
+```
+docker logs --tail=80 nwn-ee-pw
+```
+
+## Updating the module
+
+1. Edit the module in the Aurora Toolset.
+2. Export to `module/NV_PW_Seed.mod`.
+3. Rebuild the image and restart the container.
+
+```
+docker build -t nwn-ee-pw:local -f ops/Dockerfile .
+docker compose -f ops/docker-compose.yml up -d
+```
+
+## CI/CD (GHCR)
+
+Workflow: `.github/workflows/docker-image.yml`
+
+- Push to `master` builds and pushes `ghcr.io/nfnv/neverwinter-project:staging-latest`.
+- Tag `vX.Y.Z` builds and pushes:
+  - `ghcr.io/nfnv/neverwinter-project:vX.Y.Z`
+  - `ghcr.io/nfnv/neverwinter-project:prod-latest`
+
+## Production (GCP)
+
+Terraform: `terraform/main.tf`
+
+Creates:
+- A Debian VM (`e2-small`) in `southamerica-east1-a`.
+- Firewall rule opening TCP/UDP 5121.
+- Startup script that installs Docker, clones the repo, and runs the prod compose.
+
+### Apply Terraform
+
+```
+cd terraform
+terraform init
+terraform apply
+```
+
+### Start the server on the VM
+
+The startup script already runs the server, but you can manually refresh it:
+
+```
+cd /opt/neverwinter-project
+sudo docker compose -f ops/docker-compose.prod.yml pull
+sudo docker compose -f ops/docker-compose.prod.yml up -d
+```
+
+### Get the external IP
+
+```
+gcloud compute instances describe nwn-pw-vm \
+  --project <project-id> \
+  --zone southamerica-east1-a \
+  --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+```
+
+### Connect
+
+Direct Connect to `<external-ip>:5121` from NWN:EE.
+
+## Notes on monitoring
+
+NWN uses UDP for gameplay. A generic TCP probe on port 5121 can show "offline" even when the server is healthy. Use:
+- Actual client connection.
+- Server logs.
+
+## Troubleshooting
+
+- If the server is running but you cannot connect, check:
+  - VM firewall rules (TCP/UDP 5121).
+  - VM external IP.
+  - Container logs: `docker logs --tail=80 nwn-ee-pw`.
+- If you see an image pull error, ensure GHCR auth and correct tag.
