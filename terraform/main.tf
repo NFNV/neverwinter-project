@@ -15,13 +15,18 @@ provider "google" {
   zone    = var.zone
 }
 
-resource "google_compute_firewall" "nwn_pw_5121" {
-  name    = "nwn-pw-ports"
+resource "google_compute_firewall" "nwn_pw_firewall" {
+  name    = "nwn-pw-firewall"
   network = "default"
+
+  direction = "INGRESS"
+  priority  = 1000
+
+  source_ranges = ["0.0.0.0/0"]
 
   allow {
     protocol = "tcp"
-    ports    = ["5121"]
+    ports    = ["22", "5121"]
   }
 
   allow {
@@ -29,8 +34,7 @@ resource "google_compute_firewall" "nwn_pw_5121" {
     ports    = ["5121"]
   }
 
-  source_ranges = ["0.0.0.0/0"]
-  target_tags   = ["nwn-pw"]
+  target_tags = ["nwn-pw"]
 }
 
 resource "google_compute_instance" "nwn_pw_vm" {
