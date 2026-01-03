@@ -53,7 +53,7 @@ The container runs as `nwn-ee-pw` with `restart: unless-stopped` in `ops/docker-
 To update the server image or restart the container, SSH in and run:
 
 ```
-gcloud compute ssh nwn-pw-vm --project=nwn-pw --zone=southamerica-east1-a
+gcloud compute ssh nwn-pw-vm --project=nwn-pw --zone=southamerica-east1-a --tunnel-through-iap
 cd /opt/neverwinter-project
 sudo docker compose -f ops/docker-compose.prod.yml pull
 sudo docker compose -f ops/docker-compose.prod.yml up -d
@@ -106,7 +106,7 @@ gcloud compute instances describe nwn-pw-vm \
 SSH to VM:
 
 ```
-gcloud compute ssh nwn-pw-vm --project=nwn-pw --zone=southamerica-east1-a
+gcloud compute ssh nwn-pw-vm --project=nwn-pw --zone=southamerica-east1-a --tunnel-through-iap
 ```
 
 Pull and start server:
@@ -127,3 +127,4 @@ Tail server logs:
 ```
 sudo docker logs --tail=80 nwn-ee-pw
 ```
+SSH access is now IAP-only (port 22 allowed from `35.235.240.0/20`). You must have the IAP-Secured Tunnel User role to connect.

@@ -15,8 +15,25 @@ provider "google" {
   zone    = var.zone
 }
 
-resource "google_compute_firewall" "nwn_pw_firewall" {
-  name    = "nwn-pw-firewall"
+resource "google_compute_firewall" "nwn_pw_ssh_iap" {
+  name    = "nwn-pw-ssh-iap"
+  network = "default"
+
+  direction = "INGRESS"
+  priority  = 1000
+
+  source_ranges = ["35.235.240.0/20"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  target_tags = ["nwn-pw"]
+}
+
+resource "google_compute_firewall" "nwn_pw_game" {
+  name    = "nwn-pw-game"
   network = "default"
 
   direction = "INGRESS"
@@ -26,7 +43,7 @@ resource "google_compute_firewall" "nwn_pw_firewall" {
 
   allow {
     protocol = "tcp"
-    ports    = ["22", "5121"]
+    ports    = ["5121"]
   }
 
   allow {

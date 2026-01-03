@@ -119,6 +119,23 @@ gcloud compute instances describe nwn-pw-vm \
 
 Direct Connect to `<external-ip>:5121` from NWN:EE.
 
+## Security & SSH access
+
+SSH uses IAP tunneling:
+
+```
+gcloud compute ssh nwn-pw-vm \
+  --project=nwn-pw \
+  --zone=southamerica-east1-a \
+  --tunnel-through-iap
+```
+
+Terraform configures two firewall rules:
+- `nwn-pw-ssh-iap`: allows tcp:22 only from the IAP proxy range `35.235.240.0/20` (no direct public SSH).
+- `nwn-pw-game`: allows tcp/udp:5121 from `0.0.0.0/0` so players can connect.
+
+This keeps the game port open for players while limiting SSH to authenticated IAP users.
+
 ## Notes on monitoring
 
 NWN uses UDP for gameplay. A generic TCP probe on port 5121 can show "offline" even when the server is healthy. Use:
