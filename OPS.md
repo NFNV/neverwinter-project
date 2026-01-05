@@ -65,6 +65,16 @@ To stop the server container:
 sudo docker compose -f ops/docker-compose.prod.yml down
 ```
 
+### Status backend
+
+The `nwn-status` service runs on the same VM and exposes `GET /status` on port 8080.
+
+Example:
+
+```
+curl http://<VM_EXTERNAL_IP>:8080/status
+```
+
 ## Ephemeral external IP (important)
 
 The VM uses an ephemeral external IP, which changes on each stop/start. This avoids the cost of a reserved static IP, but you must re-check the IP before connecting.

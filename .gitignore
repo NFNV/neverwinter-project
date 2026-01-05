@@ -8,3 +8,8 @@ terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/*.tfstate
 terraform/*.tfstate.backup
+AGENTS.md
+PROJECT_NOTES.md
+__pycache__/
+*.pyc
+.venv/

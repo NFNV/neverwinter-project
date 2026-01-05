@@ -9,6 +9,7 @@ on:
 
 env:
   IMAGE_NAME: ghcr.io/nfnv/neverwinter-project
+  STATUS_IMAGE_NAME: ghcr.io/nfnv/nwn-status-backend
 
 jobs:
   build-and-push:
@@ -53,3 +54,12 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ${{ steps.vars.outputs.tags }}
+
+      - name: Build and push status backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./status_backend
+          file: ./status_backend/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.STATUS_IMAGE_NAME }}:prod-latest
