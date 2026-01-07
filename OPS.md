@@ -65,6 +65,12 @@ To stop the server container:
 sudo docker compose -f ops/docker-compose.prod.yml down
 ```
 
+## Automation
+
+Boot-time automation: each VM boot checks out the latest prod tag (`vX.Y.Z`) and runs `docker compose pull` and `docker compose up -d` using `/opt/neverwinter-project/ops/docker-compose.prod.yml`. If GHCR is temporarily unavailable, it continues with cached images.
+
+Release automation: tagging `vX.Y.Z` triggers CI build+push and a CD deploy that updates the VM (when it is online). If the VM is offline during a release, it will update on the next boot via the startup script.
+
 ### Status backend
 
 The `nwn-status` service runs on the same VM and exposes `GET /status` on port 8080.
@@ -77,9 +83,9 @@ curl http://<VM_EXTERNAL_IP>:8080/status
 
 ## Ephemeral external IP (important)
 
-The VM uses an ephemeral external IP, which changes on each stop/start. This avoids the cost of a reserved static IP, but you must re-check the IP before connecting.
+The VM uses an ephemeral external IP, which changes on each stop/start. This avoids the cost of a reserved static IP, but you must retrieve the current IP before connecting.
 
-Get the current external IP:
+Get the current external IP with:
 
 ```
 gcloud compute instances describe nwn-pw-vm \

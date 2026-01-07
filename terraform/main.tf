@@ -43,7 +43,7 @@ resource "google_compute_firewall" "nwn_pw_game" {
 
   allow {
     protocol = "tcp"
-    ports    = ["5121"]
+    ports    = ["5121", "8080"]
   }
 
   allow {
@@ -75,24 +75,15 @@ resource "google_compute_instance" "nwn_pw_vm" {
     access_config {}
   }
 
-  metadata_startup_script = <<-EOT
-    #!/usr/bin/env bash
-    set -euxo pipefail
+  metadata = {
+    "startup-script" = file("${path.module}/startup.sh")
+  }
 
-    apt-get update -y
-    apt-get install -y docker.io docker-compose-plugin git
-
-    if [ ! -d "/opt/neverwinter-project" ]; then
-      git clone https://github.com/NFNV/neverwinter-project.git /opt/neverwinter-project
-    fi
-
-    cd /opt/neverwinter-project
-
-    mkdir -p servervault database logs
-
-    docker compose -f ops/docker-compose.prod.yml pull || true
-    docker compose -f ops/docker-compose.prod.yml up -d
-  EOT
+  lifecycle {
+    ignore_changes = [
+      metadata_startup_script,
+    ]
+  }
 
   labels = {
     game  = "nwn"
@@ -104,11 +95,6 @@ resource "google_compute_instance" "nwn_pw_vm" {
 output "nwn_pw_vm_name" {
   description = "Name of the NWN PW VM"
   value       = google_compute_instance.nwn_pw_vm.name
-}
-
-output "nwn_pw_external_ip" {
-  description = "External IP for NWN:EE client connections"
-  value       = google_compute_instance.nwn_pw_vm.network_interface[0].access_config[0].nat_ip
 }
 
 variable "project_id" {
