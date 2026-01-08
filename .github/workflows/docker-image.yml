@@ -72,19 +72,36 @@ jobs:
       contents: read
       id-token: write
     env:
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      GCP_ZONE: ${{ secrets.GCP_ZONE }}
-      GCP_INSTANCE: ${{ secrets.GCP_INSTANCE }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      GCP_ZONE: ${{ secrets.GCP_ZONE || vars.GCP_ZONE }}
+      GCP_INSTANCE: ${{ secrets.GCP_INSTANCE || vars.GCP_INSTANCE }}
+      WIF_PROVIDER: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER || vars.WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL || vars.GCP_SERVICE_ACCOUNT_EMAIL }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate deploy configuration
+        run: |
+          if [ -z "$WIF_PROVIDER" ]; then
+            echo "Missing WORKLOAD_IDENTITY_PROVIDER (secret or variable)."
+            exit 1
+          fi
+          if [ -z "$GCP_SERVICE_ACCOUNT_EMAIL" ]; then
+            echo "Missing GCP_SERVICE_ACCOUNT_EMAIL (secret or variable)."
+            exit 1
+          fi
+          if [ -z "$GCP_PROJECT_ID" ] || [ -z "$GCP_ZONE" ] || [ -z "$GCP_INSTANCE" ]; then
+            echo "Missing GCP project/zone/instance (secret or variable)."
+            exit 1
+          fi
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
