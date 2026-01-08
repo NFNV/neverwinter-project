@@ -118,7 +118,7 @@ jobs:
       - name: Deploy to VM
         run: |
           gcloud --quiet compute scp ops/docker-compose.prod.yml \
-            "${GCP_INSTANCE}:/opt/neverwinter-project/ops/docker-compose.prod.yml" \
+            "${GCP_INSTANCE}:/tmp/docker-compose.prod.yml" \
             --project "${GCP_PROJECT_ID}" \
             --zone "${GCP_ZONE}" \
             --tunnel-through-iap
@@ -126,4 +126,4 @@ jobs:
             --project "${GCP_PROJECT_ID}" \
             --zone "${GCP_ZONE}" \
             --tunnel-through-iap \
-            --command "sudo docker-compose -f /opt/neverwinter-project/ops/docker-compose.prod.yml pull && sudo docker-compose -f /opt/neverwinter-project/ops/docker-compose.prod.yml up -d && sudo docker ps"
+            --command "sudo mv /tmp/docker-compose.prod.yml /opt/neverwinter-project/ops/docker-compose.prod.yml && sudo docker-compose -f /opt/neverwinter-project/ops/docker-compose.prod.yml pull && sudo docker-compose -f /opt/neverwinter-project/ops/docker-compose.prod.yml up -d && sudo docker ps"
