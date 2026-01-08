@@ -108,14 +108,21 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          if [ ! -f ~/.ssh/google_compute_engine ]; then
+            ssh-keygen -t rsa -b 3072 -f ~/.ssh/google_compute_engine -N "" -q
+          fi
+
       - name: Deploy to VM
         run: |
-          gcloud compute scp ops/docker-compose.prod.yml \
+          gcloud --quiet compute scp ops/docker-compose.prod.yml \
             "${GCP_INSTANCE}:/opt/neverwinter-project/ops/docker-compose.prod.yml" \
             --project "${GCP_PROJECT_ID}" \
             --zone "${GCP_ZONE}" \
             --tunnel-through-iap
-          gcloud compute ssh "${GCP_INSTANCE}" \
+          gcloud --quiet compute ssh "${GCP_INSTANCE}" \
             --project "${GCP_PROJECT_ID}" \
             --zone "${GCP_ZONE}" \
             --tunnel-through-iap \
