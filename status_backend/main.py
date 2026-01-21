@@ -1,184 +1,82 @@
+import http.client
+import json
 import os
-import random
 import socket
-import struct
-from typing import Dict, Optional
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import FastAPI
 
-DEFAULT_HOST = "nwn-ee-pw"
-DEFAULT_PORT = 5121
-DEFAULT_TIMEOUT = 2.0
-MAX_PACKET_SIZE = 4096
+DEFAULT_CONTAINER_NAME = "nwn-ee-pw"
+DEFAULT_DOCKER_SOCK = "/var/run/docker.sock"
 
 app = FastAPI()
 
 
-def _get_target() -> tuple[str, int]:
-    host = os.getenv("NWN_HOST", DEFAULT_HOST)
-    port_raw = os.getenv("NWN_PORT", str(DEFAULT_PORT))
+def _get_container_name() -> str:
+    name = os.getenv("NWN_CONTAINER_NAME", DEFAULT_CONTAINER_NAME).strip()
+    return name or DEFAULT_CONTAINER_NAME
+
+
+def _get_docker_sock() -> str:
+    sock = os.getenv("DOCKER_SOCK", DEFAULT_DOCKER_SOCK).strip()
+    return sock or DEFAULT_DOCKER_SOCK
+
+
+def _utc_now() -> str:
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def _docker_unix_get_json(sock_path: str, path: str, timeout: float = 2.0) -> tuple[int, Optional[dict]]:
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    sock.connect(sock_path)
     try:
-        port = int(port_raw)
-    except ValueError:
-        port = DEFAULT_PORT
-
-    if not 1 <= port <= 65535:
-        port = DEFAULT_PORT
-
-    return host, port
-
-
-def _safe_int(value: Optional[str]) -> Optional[int]:
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _parse_kv_null(data: bytes) -> Dict[str, str]:
-    if not data:
-        return {}
-
-    if b"\x00\x00" in data:
-        data = data.split(b"\x00\x00", 1)[0]
-
-    parts = data.split(b"\x00")
-    kv: Dict[str, str] = {}
-    for i in range(0, len(parts) - 1, 2):
-        key = parts[i].decode("latin-1", "replace")
-        value = parts[i + 1].decode("latin-1", "replace")
-        if key:
-            kv[key] = value
-    return kv
-
-
-def _parse_kv_backslash(data: bytes) -> Dict[str, str]:
-    parts = [part for part in data.split(b"\\") if part]
-    kv: Dict[str, str] = {}
-    for i in range(0, len(parts) - 1, 2):
-        key = parts[i].decode("latin-1", "replace")
-        if key.lower() == "final":
-            break
-        value = parts[i + 1].decode("latin-1", "replace")
-        kv[key] = value
-    return kv
-
-
-def _query_gamespy3(host: str, port: int, timeout: float) -> Optional[Dict[str, str]]:
-    session_id = random.randint(0, 0xFFFFFFFF)
-    session_bytes = struct.pack(">I", session_id)
-    addr = (host, port)
-
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.settimeout(timeout)
-        sock.sendto(b"\xFE\xFD\x09" + session_bytes, addr)
+        request = (
+            f"GET {path} HTTP/1.1\r\n"
+            "Host: localhost\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+        ).encode("utf-8")
+        sock.sendall(request)
+        response = http.client.HTTPResponse(sock)
+        response.begin()
+        body = response.read()
+        if not body:
+            return response.status, None
         try:
-            response = sock.recvfrom(MAX_PACKET_SIZE)[0]
-        except socket.timeout:
-            return None
-
-        if len(response) < 5 or response[0:1] != b"\x09":
-            return None
-
-        challenge_raw = response[5:].split(b"\x00", 1)[0].strip()
-        if not challenge_raw:
-            return None
-
+            payload = json.loads(body.decode("utf-8"))
+        except json.JSONDecodeError:
+            payload = None
+        return response.status, payload
+    finally:
         try:
-            challenge_int = int(challenge_raw)
-        except ValueError:
-            return None
-
-        try:
-            challenge_bytes = struct.pack(">i", challenge_int)
-        except struct.error:
-            return None
-
-        sock.sendto(
-            b"\xFE\xFD\x00" + session_bytes + challenge_bytes + b"\x00\x00\x00\x00",
-            addr,
-        )
-        try:
-            response = sock.recvfrom(MAX_PACKET_SIZE)[0]
-        except socket.timeout:
-            return None
-
-        if len(response) < 5 or response[0:1] != b"\x00":
-            return None
-
-    return _parse_kv_null(response[5:])
-
-
-def _query_gamespy2(host: str, port: int, timeout: float) -> Optional[Dict[str, str]]:
-    addr = (host, port)
-    for payload in (b"\\status\\", b"\\basic\\"):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.settimeout(timeout)
-            sock.sendto(payload, addr)
-            try:
-                response = sock.recvfrom(MAX_PACKET_SIZE)[0]
-            except socket.timeout:
-                continue
-
-        if response:
-            return _parse_kv_backslash(response)
-
-    return None
-
-
-def _format_status(kv: Dict[str, str]) -> dict:
-    kv_lower = {key.lower(): value for key, value in kv.items()}
-
-    name = (
-        kv_lower.get("hostname")
-        or kv_lower.get("name")
-        or kv_lower.get("sv_hostname")
-    )
-
-    players = _safe_int(
-        kv_lower.get("numplayers")
-        or kv_lower.get("num_players")
-        or kv_lower.get("clients")
-        or kv_lower.get("players")
-    )
-
-    max_players = _safe_int(
-        kv_lower.get("maxplayers")
-        or kv_lower.get("max_clients")
-        or kv_lower.get("sv_maxplayers")
-    )
-
-    if players is None or players < 0:
-        players = 0
-
-    if max_players is not None and max_players < 0:
-        max_players = None
-
-    return {
-        "online": True,
-        "players": players,
-        "max_players": max_players,
-        "name": name,
-    }
-
-
-def _query_status(host: str, port: int) -> dict:
-    for query in (_query_gamespy3, _query_gamespy2):
-        try:
-            kv = query(host, port, DEFAULT_TIMEOUT)
+            sock.close()
         except OSError:
-            kv = None
-        if kv is not None:
-            return _format_status(kv)
+            pass
 
-    return {
-        "online": False,
-        "players": 0,
-        "max_players": None,
-        "name": None,
-    }
+
+def _check_container(container_name: str, sock_path: str) -> tuple[bool, Optional[str], Optional[str]]:
+    try:
+        status, data = _docker_unix_get_json(
+            sock_path,
+            f"/containers/{container_name}/json",
+        )
+    except (OSError, http.client.HTTPException) as exc:
+        return False, None, f"{exc.__class__.__name__}: {exc}"
+
+    if status == 200 and isinstance(data, dict):
+        state = data.get("State", {})
+        running = bool(state.get("Running", False))
+        return running, state.get("Status"), None
+    if status == 404:
+        return False, None, "container_not_found"
+    return False, None, f"http_{status}"
 
 
 @app.get("/health")
@@ -188,5 +86,18 @@ def health() -> dict:
 
 @app.get("/status")
 def status() -> dict:
-    host, port = _get_target()
-    return _query_status(host, port)
+    container_name = _get_container_name()
+    sock_path = _get_docker_sock()
+    running, state, error = _check_container(container_name, sock_path)
+    response = {
+        "online": running,
+        "server_running": running,
+        "players": 0,
+        "max_players": None,
+        "name": None,
+        "container_state": state,
+        "checked_at": _utc_now(),
+    }
+    if error:
+        response["docker_error"] = error
+    return response

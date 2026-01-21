@@ -24,5 +24,9 @@ services:
     environment:
       - NWN_HOST=nwn-ee-pw
       - NWN_PORT=5121
+      - NWN_CONTAINER_NAME=nwn-ee-pw
+      - DOCKER_SOCK=/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "8080:8080"
