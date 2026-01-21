@@ -79,6 +79,19 @@ Workflow: `.github/workflows/docker-image.yml`
   - `ghcr.io/nfnv/neverwinter-project:vX.Y.Z`
   - `ghcr.io/nfnv/neverwinter-project:prod-latest`
 
+### GCP credentials (WIF)
+
+Deploy uses Workload Identity Federation (OIDC) from GitHub Actions; no JSON key files.
+
+Required secrets/vars:
+- `GCP_PROJECT_ID`
+- `GCP_ZONE`
+- `GCP_INSTANCE`
+- `WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT_EMAIL`
+
+Ensure `iamcredentials.googleapis.com` is enabled for impersonation.
+
 ## Production (GCP)
 
 Terraform: `terraform/main.tf`

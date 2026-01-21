@@ -71,6 +71,19 @@ Boot-time automation: each VM boot checks out the latest prod tag (`vX.Y.Z`) and
 
 Release automation: tagging `vX.Y.Z` triggers CI build+push and a CD deploy that updates the VM (when it is online). If the VM is offline during a release, it will update on the next boot via the startup script.
 
+### CI/CD credentials (WIF)
+
+Deploy uses Workload Identity Federation (OIDC) from GitHub Actions; no JSON key files.
+
+Required secrets/vars:
+- `GCP_PROJECT_ID`
+- `GCP_ZONE`
+- `GCP_INSTANCE`
+- `WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT_EMAIL`
+
+Ensure `iamcredentials.googleapis.com` is enabled for impersonation.
+
 ### Status backend
 
 The `nwn-status` service runs on the same VM and exposes `GET /status` on port 8080.
