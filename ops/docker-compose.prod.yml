@@ -18,6 +18,11 @@ services:
       - ./database:/nwn/home/database
       - ./logs:/nwn/run/logs
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   nwn-status:
     image: ghcr.io/nfnv/nwn-status-backend:prod-latest
     restart: unless-stopped
@@ -30,3 +35,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "8080:8080"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

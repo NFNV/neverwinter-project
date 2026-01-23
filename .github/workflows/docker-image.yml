@@ -127,3 +127,11 @@ jobs:
             --zone "${GCP_ZONE}" \
             --tunnel-through-iap \
             --command "sudo mv /tmp/docker-compose.prod.yml /opt/neverwinter-project/ops/docker-compose.prod.yml && sudo docker-compose -f /opt/neverwinter-project/ops/docker-compose.prod.yml pull && sudo docker-compose -f /opt/neverwinter-project/ops/docker-compose.prod.yml up -d && sudo docker ps"
+
+      - name: Post-deploy health check
+        run: |
+          gcloud --quiet compute ssh "${GCP_INSTANCE}" \
+            --project "${GCP_PROJECT_ID}" \
+            --zone "${GCP_ZONE}" \
+            --tunnel-through-iap \
+            --command "set -euo pipefail; echo 'Running post-deploy health checks...'; curl -fsS http://127.0.0.1:8080/health; curl -fsS http://127.0.0.1:8080/status"

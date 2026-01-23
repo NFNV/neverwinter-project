@@ -28,7 +28,7 @@ docker compose -f ops/docker-compose.yml down
 
 Terraform in `terraform/` creates:
 - `nwn-pw-vm` (GCE VM)
-- One firewall rule allowing SSH (tcp:22) and the NWN port (tcp/udp:5121)
+- Firewall rules for game/status traffic and IAP-only SSH
 
 Basic workflow:
 
@@ -40,6 +40,15 @@ terraform apply
 ```
 
 ## Production operations (GCP VM)
+
+### Get current external IP
+
+```
+gcloud compute instances describe nwn-pw-vm \
+  --project=nwn-pw \
+  --zone=southamerica-east1-a \
+  --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+```
 
 Start/stop the VM from your local machine:
 
@@ -83,6 +92,42 @@ Required secrets/vars:
 - `GCP_SERVICE_ACCOUNT_EMAIL`
 
 Ensure `iamcredentials.googleapis.com` is enabled for impersonation.
+
+## Deploy a release
+
+```
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+Then verify the deploy job succeeded in GitHub Actions and confirm on the VM:
+
+```
+gcloud compute ssh nwn-pw-vm --project=nwn-pw --zone=southamerica-east1-a --tunnel-through-iap
+sudo docker ps
+curl -fsS http://127.0.0.1:8080/health
+curl -fsS http://127.0.0.1:8080/status
+```
+
+## Rollback
+
+Rollback by redeploying the previous tag (vX.Y.Z-1). If the tag already exists, re-run the workflow in GitHub Actions or re-push the tag.
+
+Verify the running image digest on the VM:
+
+```
+sudo docker inspect --format='{{.Image}}' nwn-ee-pw
+sudo docker image inspect --format='{{index .RepoDigests 0}}' ghcr.io/nfnv/neverwinter-project:prod-latest
+```
+
+## Debug quick commands
+
+```
+sudo docker compose -f ops/docker-compose.prod.yml ps
+sudo docker logs --tail=120 nwn-ee-pw
+ss -tuln
+ss -uapn
+```
 
 ### Status backend
 
@@ -157,3 +202,8 @@ Tail server logs:
 sudo docker logs --tail=80 nwn-ee-pw
 ```
 SSH access is now IAP-only (port 22 allowed from `35.235.240.0/20`). You must have the IAP-Secured Tunnel User role to connect.
+
+## Known limitations
+
+- External IP is ephemeral (no static IP for this practice project).
+- Status endpoint reports container-truth, not UDP query results.

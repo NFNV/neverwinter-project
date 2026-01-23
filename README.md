@@ -2,6 +2,20 @@
 
 A small Neverwinter Nights: Enhanced Edition persistent world server, packaged as a Docker image and deployed to Google Cloud. The goal is a compact but real-world infra project: custom NWN content, containerized server, CI to GHCR, and a VM running the image.
 
+## What this project demonstrates
+
+- CI/CD with tagged releases and GHCR images
+- Infrastructure as code (Terraform) for GCE
+- Secure deploys using WIF + IAP (no SSH to the world)
+- Boot-time convergence via VM startup script (pull/up on every boot)
+- Container-truth health via a lightweight status backend
+
+## Docs
+
+- Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Operations: [OPS.md](OPS.md)
+- Postmortem: [UDP status false offline](postmortems/2026-01-udp-status-false-offline.md)
+
 ## What this includes
 
 - Custom module: `module/NV_PW_Seed.mod`
@@ -74,8 +88,10 @@ docker compose -f ops/docker-compose.yml up -d
 
 Workflow: `.github/workflows/docker-image.yml`
 
-- Push to `master` builds and pushes `ghcr.io/nfnv/neverwinter-project:staging-latest`.
-- Tag `vX.Y.Z` builds and pushes:
+### Release model
+
+- `master` pushes build `ghcr.io/nfnv/neverwinter-project:staging-latest`
+- Tags `vX.Y.Z` push both:
   - `ghcr.io/nfnv/neverwinter-project:vX.Y.Z`
   - `ghcr.io/nfnv/neverwinter-project:prod-latest`
 
@@ -131,6 +147,15 @@ gcloud compute instances describe nwn-pw-vm \
 ### Connect
 
 Direct Connect to `<external-ip>:5121` from NWN:EE.
+
+### How to verify it's running
+
+On the VM:
+
+```
+curl -fsS http://127.0.0.1:8080/health
+curl -fsS http://127.0.0.1:8080/status
+```
 
 ## Security & SSH access
 
