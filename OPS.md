@@ -39,6 +39,14 @@ terraform plan
 terraform apply
 ```
 
+## Showcase lifecycle
+
+Use `./up.sh` from the repo root to recreate the showcase infrastructure. It runs `terraform apply -auto-approve` from `terraform/` and then prints the VM external IP.
+
+Use `./down.sh` from the repo root to destroy the showcase infrastructure when you want to stop costs.
+
+The VM external IP is ephemeral, so it may change after `./up.sh`.
+
 ## Production operations (GCP VM)
 
 ### Get current external IP
