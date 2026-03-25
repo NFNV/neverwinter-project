@@ -187,3 +187,7 @@ NWN uses UDP for gameplay. A generic TCP probe on port 5121 can show "offline" e
   - VM external IP.
   - Container logs: `docker logs --tail=80 nwn-ee-pw`.
 - If you see an image pull error, ensure GHCR auth and correct tag.
+
+## 
+
+![Alt text](https://i.imgur.com/lhKcym9.jpeg)
